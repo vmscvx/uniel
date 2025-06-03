@@ -1,0 +1,49 @@
+name: Weekly Data Update
+on:
+  schedule:
+    - cron: "0 16 * * 1"
+  push:
+    branches:
+      - main
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run update script
+        env:
+          HEADER: ${{ secrets.HEADER }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          URL: ${{ secrets.URL }}
+          USER: ${{ secrets.USER }}
+        run: |
+          python update.py
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push changes if any
+        run: |
+          if git diff --quiet; then
+            echo "No changes detected"
+          else
+            git add data
+            git commit -m "Update"
+            git push
+          fi
